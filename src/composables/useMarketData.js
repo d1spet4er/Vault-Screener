@@ -1,20 +1,15 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
+
+const TOP_N = 100 // сколько монет показывать
 
 // ─── Binance API ───────────────────────────────────────────────────────────────
-async function fetchBinanceSpot(symbols) {
+async function fetchBinanceSpot() {
   try {
-    const [tickerRes, statsRes] = await Promise.all([
-      fetch('https://api.binance.com/api/v3/ticker/price'),
-      fetch('https://api.binance.com/api/v3/ticker/24hr'),
-    ])
-    const prices = await tickerRes.json()
-    const stats = await statsRes.json()
-
-    const priceMap = {}
-    prices.forEach(p => { priceMap[p.symbol] = parseFloat(p.price) })
+    const res = await fetch('https://api.binance.com/api/v3/ticker/24hr')
+    const stats = await res.json()
 
     return stats
-      .filter(s => s.symbol.endsWith('USDT') && symbols.includes(s.symbol))
+      .filter(s => s.symbol.endsWith('USDT') && !s.symbol.includes('UP') && !s.symbol.includes('DOWN') && !s.symbol.includes('BEAR') && !s.symbol.includes('BULL'))
       .map(s => ({
         symbol: s.symbol.replace('USDT', ''),
         price: parseFloat(s.lastPrice),
@@ -27,13 +22,16 @@ async function fetchBinanceSpot(symbols) {
         exchange: 'Binance',
         market: 'spot',
       }))
+      .filter(s => s.volume24h > 100000) // фильтр мусорных пар
+      .sort((a, b) => b.volume24h - a.volume24h)
+      .slice(0, TOP_N)
   } catch (e) {
     console.error('Binance spot error:', e)
     return []
   }
 }
 
-async function fetchBinanceFutures(symbols) {
+async function fetchBinanceFutures() {
   try {
     const [tickerRes, frRes] = await Promise.all([
       fetch('https://fapi.binance.com/fapi/v1/ticker/24hr'),
@@ -46,7 +44,7 @@ async function fetchBinanceFutures(symbols) {
     fr.forEach(f => { frMap[f.symbol] = parseFloat(f.lastFundingRate) })
 
     return stats
-      .filter(s => s.symbol.endsWith('USDT') && symbols.includes(s.symbol))
+      .filter(s => s.symbol.endsWith('USDT'))
       .map(s => ({
         symbol: s.symbol.replace('USDT', ''),
         price: parseFloat(s.lastPrice),
@@ -60,6 +58,9 @@ async function fetchBinanceFutures(symbols) {
         exchange: 'Binance',
         market: 'futures',
       }))
+      .filter(s => s.volume24h > 500000)
+      .sort((a, b) => b.volume24h - a.volume24h)
+      .slice(0, TOP_N)
   } catch (e) {
     console.error('Binance futures error:', e)
     return []
@@ -67,14 +68,14 @@ async function fetchBinanceFutures(symbols) {
 }
 
 // ─── Bybit API ─────────────────────────────────────────────────────────────────
-async function fetchBybitSpot(symbols) {
+async function fetchBybitSpot() {
   try {
     const res = await fetch('https://api.bybit.com/v5/market/tickers?category=spot')
     const data = await res.json()
     if (data.retCode !== 0) return []
 
     return data.result.list
-      .filter(s => s.symbol.endsWith('USDT') && symbols.includes(s.symbol))
+      .filter(s => s.symbol.endsWith('USDT') && !s.symbol.includes('UP') && !s.symbol.includes('DOWN'))
       .map(s => ({
         symbol: s.symbol.replace('USDT', ''),
         price: parseFloat(s.lastPrice),
@@ -87,20 +88,23 @@ async function fetchBybitSpot(symbols) {
         exchange: 'Bybit',
         market: 'spot',
       }))
+      .filter(s => s.volume24h > 100000)
+      .sort((a, b) => b.volume24h - a.volume24h)
+      .slice(0, TOP_N)
   } catch (e) {
     console.error('Bybit spot error:', e)
     return []
   }
 }
 
-async function fetchBybitFutures(symbols) {
+async function fetchBybitFutures() {
   try {
     const res = await fetch('https://api.bybit.com/v5/market/tickers?category=linear')
     const data = await res.json()
     if (data.retCode !== 0) return []
 
     return data.result.list
-      .filter(s => s.symbol.endsWith('USDT') && symbols.includes(s.symbol))
+      .filter(s => s.symbol.endsWith('USDT'))
       .map(s => ({
         symbol: s.symbol.replace('USDT', ''),
         price: parseFloat(s.lastPrice),
@@ -115,38 +119,39 @@ async function fetchBybitFutures(symbols) {
         exchange: 'Bybit',
         market: 'futures',
       }))
+      .filter(s => s.volume24h > 500000)
+      .sort((a, b) => b.volume24h - a.volume24h)
+      .slice(0, TOP_N)
   } catch (e) {
     console.error('Bybit futures error:', e)
     return []
   }
 }
 
-// ─── CoinGecko for market cap + metadata ──────────────────────────────────────
-const COINGECKO_IDS = {
-  BTC: 'bitcoin', ETH: 'ethereum', BNB: 'binancecoin', SOL: 'solana',
-  XRP: 'ripple', ADA: 'cardano', AVAX: 'avalanche-2', DOGE: 'dogecoin',
-  DOT: 'polkadot', LINK: 'chainlink', MATIC: 'matic-network', UNI: 'uniswap',
-  LTC: 'litecoin', ATOM: 'cosmos', NEAR: 'near', APT: 'aptos',
-  OP: 'optimism', ARB: 'arbitrum', INJ: 'injective-protocol', SUI: 'sui',
-}
-
+// ─── CoinGecko — иконки и маркет кап ──────────────────────────────────────────
 async function fetchCoinGeckoMeta(symbols) {
   try {
-    const ids = symbols.map(s => COINGECKO_IDS[s]).filter(Boolean).join(',')
+    // Используем search endpoint для получения id по символу
+    const topSymbols = symbols.slice(0, 50) // CoinGecko лимит
+
+    // Получаем топ 250 монет по маркет капу — покрывает большинство символов
     const res = await fetch(
-      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&per_page=100&page=1`
+      'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false'
     )
     const data = await res.json()
+
     const map = {}
     data.forEach(c => {
-      const sym = Object.entries(COINGECKO_IDS).find(([, id]) => id === c.id)?.[0]
-      if (sym) map[sym] = {
-        mcap: c.market_cap,
-        rank: c.market_cap_rank,
-        supply: c.circulating_supply,
-        maxSupply: c.max_supply,
-        image: c.image,
-        sparkline: c.sparkline_in_7d?.price ?? [],
+      const sym = c.symbol.toUpperCase()
+      if (symbols.includes(sym)) {
+        map[sym] = {
+          mcap: c.market_cap,
+          rank: c.market_cap_rank,
+          supply: c.circulating_supply,
+          maxSupply: c.max_supply,
+          image: c.image,
+          sparkline: [],
+        }
       }
     })
     return map
@@ -157,20 +162,6 @@ async function fetchCoinGeckoMeta(symbols) {
 }
 
 // ─── Main composable ──────────────────────────────────────────────────────────
-const SPOT_SYMBOLS = [
-  'BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','ADAUSDT',
-  'AVAXUSDT','DOGEUSDT','DOTUSDT','LINKUSDT','MATICUSDT','UNIUSDT',
-  'LTCUSDT','ATOMUSDT','NEARUSDT','APTUSDT','OPUSDT','ARBUSDT',
-  'INJUSDT','SUIUSDT',
-]
-
-const FUTURES_SYMBOLS = [
-  'BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','ADAUSDT',
-  'AVAXUSDT','DOGEUSDT','DOTUSDT','LINKUSDT','MATICUSDT','UNIUSDT',
-  'LTCUSDT','ATOMUSDT','NEARUSDT','APTUSDT','OPUSDT','ARBUSDT',
-  'INJUSDT','SUIUSDT',
-]
-
 export function useMarketData() {
   const coins = ref([])
   const meta = ref({})
@@ -180,40 +171,35 @@ export function useMarketData() {
   const exchange = ref('Binance')
   const market = ref('spot')
 
-  const coinSymbols = computed(() =>
-    market.value === 'spot' ? SPOT_SYMBOLS : FUTURES_SYMBOLS
-  )
-
   async function fetchData() {
     loading.value = true
     error.value = null
     try {
       let tickers = []
+
       if (exchange.value === 'Binance') {
         tickers = market.value === 'spot'
-          ? await fetchBinanceSpot(SPOT_SYMBOLS)
-          : await fetchBinanceFutures(FUTURES_SYMBOLS)
+          ? await fetchBinanceSpot()
+          : await fetchBinanceFutures()
       } else {
         tickers = market.value === 'spot'
-          ? await fetchBybitSpot(SPOT_SYMBOLS)
-          : await fetchBybitFutures(FUTURES_SYMBOLS)
+          ? await fetchBybitSpot()
+          : await fetchBybitFutures()
       }
 
-      const syms = tickers.map(t => t.symbol)
+      const syms = [...new Set(tickers.map(t => t.symbol))]
       const metaData = await fetchCoinGeckoMeta(syms)
       meta.value = metaData
 
-      coins.value = tickers
-        .map(t => ({
-          ...t,
-          mcap: metaData[t.symbol]?.mcap ?? null,
-          rank: metaData[t.symbol]?.rank ?? 999,
-          supply: metaData[t.symbol]?.supply ?? null,
-          maxSupply: metaData[t.symbol]?.maxSupply ?? null,
-          image: metaData[t.symbol]?.image ?? null,
-          sparkline: metaData[t.symbol]?.sparkline ?? [],
-        }))
-        .sort((a, b) => a.rank - b.rank)
+      coins.value = tickers.map((t, i) => ({
+        ...t,
+        mcap: metaData[t.symbol]?.mcap ?? null,
+        rank: metaData[t.symbol]?.rank ?? (i + 1),
+        supply: metaData[t.symbol]?.supply ?? null,
+        maxSupply: metaData[t.symbol]?.maxSupply ?? null,
+        image: metaData[t.symbol]?.image ?? null,
+        sparkline: [],
+      }))
 
       lastUpdated.value = new Date()
     } catch (e) {
