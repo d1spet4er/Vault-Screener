@@ -512,13 +512,13 @@ watch(() => props.exchange, (ex) => { formulaExchange.value = ex })
 .chart-btn:disabled { opacity: .4; cursor: not-allowed; }
 
 .chart-body {
-  flex: 1; min-height: 200px; position: relative; padding: 8px 0 0;
+  flex: 1; height: 240px; min-height: 240px; position: relative; padding: 8px 0 0; overflow: hidden;
 }
-.chart-canvas { width: 100%; height: 220px; display: block; }
+.chart-canvas { width: 100% !important; height: 220px !important; display: block; min-height: 220px; }
 
 .chart-loading, .chart-error, .chart-empty {
   display: flex; align-items: center; justify-content: center;
-  height: 220px; color: var(--text3);
+  height: 240px; color: var(--text3);
 }
 .chart-error { color: var(--dn); gap: 8px; font-size: 13px; }
 .loading-bars { display: flex; align-items: flex-end; gap: 4px; height: 40px; }
