@@ -24,12 +24,7 @@ npm run dev
 
 ## 🌐 Deploy to Netlify
 
-1. Push this folder to GitHub
-2. Connect repo on [netlify.com](https://netlify.com)
-3. Set build settings:
-   - **Build command:** `npm run build`
-   - **Publish directory:** `dist`
-4. Deploy ✅
+https://6a1c871843b20a81eba5c17c--value-scriner.netlify.app/
 
 ## 🛠 Tech Stack
 
