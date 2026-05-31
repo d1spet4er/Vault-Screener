@@ -1,0 +1,59 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --g1: #070f09;
+  --g2: #0b1810;
+  --g3: #0f2016;
+  --g4: #142a1c;
+  --g5: #1a3524;
+  --g6: #22452f;
+  --g7: #2d5c3e;
+  --g8: #3a7a52;
+  --ga: #5a9e72;
+  --gb: #82be96;
+  --gc: #b4d4be;
+  --gd: #daeee2;
+
+  --gold: #c9a84c;
+  --gold2: #e2c068;
+  --gold3: #f0d898;
+  --goldfaint: rgba(201,168,76,.08);
+
+  --cream: #efe8d4;
+  --cream2: #d4c8a0;
+  --cream3: #a89e7c;
+
+  --up: #4caf7a;
+  --upfaint: rgba(76,175,122,.12);
+  --dn: #d95c5c;
+  --dnfaint: rgba(217,92,92,.12);
+
+  --text1: #e8dfc8;
+  --text2: #a8b89e;
+  --text3: #5a7a62;
+
+  --border: rgba(42,100,66,.5);
+  --border2: rgba(58,122,82,.7);
+
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+html, body {
+  background: var(--g1);
+  color: var(--text1);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--g2); }
+::-webkit-scrollbar-thumb { background: var(--g6); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--g7); }
+
+button { font-family: var(--font-sans); cursor: pointer; }
+input { font-family: var(--font-sans); }
