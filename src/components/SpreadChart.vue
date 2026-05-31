@@ -241,7 +241,7 @@ async function loadChartData(chart) {
 
     chart.data = aligned
     await nextTick()
-    drawCanvas(chart)
+    setTimeout(() => drawCanvas(chart), 80)
   } catch (e) {
     chart.error = e.message || 'Failed to load'
   } finally {
@@ -261,6 +261,7 @@ function drawCanvas(chart) {
   const dpr = window.devicePixelRatio || 1
   const w = canvas.offsetWidth
   const h = canvas.offsetHeight
+  if (!w || !h) { setTimeout(() => drawCanvas(chart), 100); return }
   canvas.width = w * dpr
   canvas.height = h * dpr
   ctx.scale(dpr, dpr)
