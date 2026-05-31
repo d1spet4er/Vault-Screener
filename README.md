@@ -24,7 +24,7 @@ npm run dev
 
 ## 🌐 Deploy to Netlify
 
-https://6a1c871843b20a81eba5c17c--value-scriner.netlify.app/
+https://value-scriner.netlify.app/
 
 ## 🛠 Tech Stack
 
