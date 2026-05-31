@@ -29,6 +29,22 @@
       </div>
     </header>
 
+    <!-- ── Main tabs ── -->
+    <div class="main-tabs-bar">
+      <button class="main-tab" :class="{ active: activeTab === 'screener' }" @click="activeTab = 'screener'">
+        <i class="ti ti-table" /> Screener
+      </button>
+      <button class="main-tab" :class="{ active: activeTab === 'spread' }" @click="activeTab = 'spread'">
+        <i class="ti ti-math-function" /> Spread Charts
+      </button>
+    </div>
+
+    <!-- ── Spread Charts tab ── -->
+    <SpreadChart v-if="activeTab === 'spread'" :exchange="exchange" />
+
+    <!-- ── Screener tab ── -->
+    <template v-if="activeTab === 'screener'">
+
     <!-- ── Exchange + Market selector ── -->
     <div class="selector-bar">
       <div class="selector-group">
@@ -186,6 +202,8 @@
       <span>{{ coins.length }} assets</span>
     </footer>
 
+    </template> <!-- end screener tab -->
+
   </div>
 </template>
 
@@ -193,9 +211,11 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useMarketData } from './composables/useMarketData.js'
 import CoinRow from './components/CoinRow.vue'
+import SpreadChart from './components/SpreadChart.vue'
 
 const { coins, loading, error, lastUpdated, exchange, market, fetchData } = useMarketData()
 
+const activeTab = ref('screener')
 const search = ref('')
 const activeFilter = ref('all')
 const sortKey = ref('rank')
@@ -494,4 +514,20 @@ onUnmounted(() => clearInterval(interval))
   background: var(--g2); border-top: 1px solid var(--border);
   font-size: 11px; color: var(--text3); letter-spacing: 1px;
 }
+
+/* ── Main tabs ── */
+.main-tabs-bar {
+  display: flex; gap: 0;
+  background: var(--g2); border-bottom: 2px solid var(--border);
+}
+.main-tab {
+  display: flex; align-items: center; gap: 7px;
+  padding: .75rem 1.5rem; border: none; background: transparent;
+  color: var(--text2); font-size: 13px; font-family: var(--font-sans);
+  cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: all .2s; letter-spacing: .5px;
+}
+.main-tab:hover { color: var(--cream2); }
+.main-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+.main-tab i { font-size: 15px; }
 </style>
