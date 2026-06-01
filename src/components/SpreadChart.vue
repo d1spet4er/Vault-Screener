@@ -78,6 +78,13 @@
               {{ chartChange(chart) >= 0 ? '+' : '' }}{{ chartChange(chart).toFixed(2) }}%
             </span>
           </div>
+          <div class="chart-local-tf">
+            <button v-for="tf in timeframes" :key="tf.id"
+              class="local-tf-btn" :class="{ active: chart.tf === tf.id }"
+              @click="setChartTf(chart, tf.id)">
+              {{ tf.label }}
+            </button>
+          </div>
           <div class="chart-actions">
             <button class="chart-btn" @click="refreshChart(chart)" :disabled="chart.loading">
               <i class="ti ti-refresh" :class="{ spinning: chart.loading }" />
@@ -111,6 +118,12 @@
           <div class="cf-stat">
             <span class="cf-label">Low</span>
             <span class="cf-val dn">{{ fmtVal(Math.min(...chart.data.map(d=>d.value))) }}</span>
+          </div>
+          <div class="cf-stat">
+            <span class="cf-label">Change</span>
+            <span class="cf-val" :class="chartChange(chart) >= 0 ? 'up' : 'dn'">
+              {{ chartChange(chart) >= 0 ? '+' : '' }}{{ chartChange(chart).toFixed(2) }}%
+            </span>
           </div>
           <div class="cf-stat">
             <span class="cf-label">Points</span>
@@ -217,7 +230,7 @@ async function loadChartData(chart) {
   chart.loading = true
   chart.error = null
   try {
-    const tf = timeframes.find(t => t.id === activeTf.value)
+    const tf = timeframes.find(t => t.id === chart.tf) || timeframes.find(t => t.id === activeTf.value)
     const symbols = extractSymbols(chart.formula)
 
     const klineMap = {}
@@ -271,7 +284,7 @@ function drawCanvas(chart) {
   const min = Math.min(...vals)
   const max = Math.max(...vals)
   const range = max - min || 1
-  const pad = { t: 12, r: 8, b: 28, l: 60 }
+  const pad = { t: 12, r: 8, b: 28, l: 72 }
   const cw = w - pad.l - pad.r
   const ch = h - pad.t - pad.b
 
@@ -283,17 +296,19 @@ function drawCanvas(chart) {
   const gradTop = isUp ? 'rgba(76,175,122,.25)' : 'rgba(217,92,92,.2)'
   const gradBot = 'rgba(0,0,0,0)'
 
-  // Grid lines
+  // Grid lines with % labels
   ctx.strokeStyle = 'rgba(42,100,66,.3)'
   ctx.lineWidth = 1
+  const baseVal = vals[0]
   for (let i = 0; i <= 4; i++) {
     const y = pad.t + (i / 4) * ch
     ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cw, y); ctx.stroke()
     const v = max - (i / 4) * range
-    ctx.fillStyle = 'rgba(180,200,185,.5)'
+    const pct = ((v - baseVal) / Math.abs(baseVal) * 100)
+    ctx.fillStyle = pct >= 0 ? 'rgba(76,175,122,.7)' : 'rgba(217,92,92,.7)'
     ctx.font = '10px DM Mono, monospace'
     ctx.textAlign = 'right'
-    ctx.fillText(fmtVal(v), pad.l - 6, y + 3)
+    ctx.fillText((pct >= 0 ? '+' : '') + pct.toFixed(2) + '%', pad.l - 4, y + 3)
   }
 
   // Gradient fill
@@ -332,7 +347,7 @@ function drawCanvas(chart) {
   for (let i = 0; i < labelCount; i++) {
     const idx = Math.round(i / (labelCount - 1) * (chart.data.length - 1))
     const t = new Date(chart.data[idx].time)
-    const label = activeTf.value === '1h' || activeTf.value === '4h'
+    const label = chart.tf === '1h' || chart.tf === '4h'
       ? t.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })
       : t.toLocaleDateString('en', { month: 'short', day: 'numeric' })
     ctx.fillText(label, px(idx), h - 6)
@@ -349,6 +364,7 @@ function addFormula() {
     id: Date.now(),
     formula,
     exchange: formulaExchange.value,
+    tf: activeTf.value,
     data: [],
     loading: false,
     error: null,
@@ -373,7 +389,12 @@ function refreshChart(chart) { loadChartData(chart) }
 
 function setTimeframe(tf) {
   activeTf.value = tf
-  charts.value.forEach(c => loadChartData(c))
+  charts.value.forEach(c => { c.tf = tf; loadChartData(c) })
+}
+
+function setChartTf(chart, tf) {
+  chart.tf = tf
+  loadChartData(chart)
 }
 
 function chartChange(chart) {
@@ -510,6 +531,15 @@ watch(() => props.exchange, (ex) => { formulaExchange.value = ex })
 .chart-btn:hover { background: var(--g4); color: var(--cream2); }
 .chart-btn.danger:hover { border-color: var(--dn); color: var(--dn); }
 .chart-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.chart-local-tf { display: flex; gap: 2px; }
+.local-tf-btn {
+  padding: 3px 7px; border-radius: 4px; border: 1px solid transparent;
+  background: transparent; color: var(--text3); font-size: 10px;
+  font-family: var(--font-mono); cursor: pointer; transition: all .15s; letter-spacing: .5px;
+}
+.local-tf-btn:hover { background: var(--g4); color: var(--cream2); }
+.local-tf-btn.active { background: var(--g5); border-color: var(--border2); color: var(--gold); }
 
 .chart-body {
   flex: 1; height: 240px; min-height: 240px; position: relative; padding: 8px 0 0; overflow: hidden;

@@ -6,8 +6,13 @@
     <td class="td-coin">
       <div class="coin-cell">
         <div class="coin-img-wrap">
-          <img v-if="coin.image" :src="coin.image" :alt="coin.symbol" class="coin-img" />
-          <div v-else class="coin-fallback">{{ coin.symbol.slice(0,2) }}</div>
+          <img
+            :src="iconUrl"
+            :alt="coin.symbol"
+            class="coin-img"
+            @error="onImgError"
+          />
+          <div class="coin-fallback" style="display:none">{{ coin.symbol.slice(0,2) }}</div>
         </div>
         <div class="coin-info">
           <span class="coin-name">{{ coin.symbol }}</span>
@@ -79,6 +84,26 @@ const fullName = computed(() => NAMES[props.coin.symbol] ?? props.coin.symbol)
 const supplyPct = computed(() =>
   props.coin.maxSupply ? Math.round((props.coin.supply / props.coin.maxSupply) * 100) : 0
 )
+
+// Icon with fallback chain: CoinGecko → crypto-icons CDN → letter fallback
+const imgSrc = ref(
+  props.coin.image ||
+  `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/32/color/${props.coin.symbol.toLowerCase()}.png`
+)
+const imgFailed = ref(false)
+
+const iconUrl = computed(() => imgSrc.value)
+
+function onImgError(e) {
+  const sym = props.coin.symbol.toLowerCase()
+  if (imgSrc.value !== `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/32/color/${sym}.png`) {
+    imgSrc.value = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/32/color/${sym}.png`
+  } else {
+    imgFailed.value = true
+    e.target.style.display = 'none'
+    e.target.nextElementSibling && (e.target.nextElementSibling.style.display = 'flex')
+  }
+}
 
 const flashUp = ref(false)
 const flashDn = ref(false)
